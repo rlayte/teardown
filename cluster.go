@@ -1,7 +1,7 @@
 package teardown
 
 type Cluster interface {
-	Setup() error
-	Teardown() error
+	Setup()
+	Teardown()
 	Addresses() []string
 }

@@ -1,15 +1,15 @@
 package main
 
 import (
-	"github.com/coreos/go-etcd/etcd"
 	"github.com/rlayte/teardown"
+	"github.com/rlayte/teardown/adapters/etcd"
 )
 
-func Test(cluster Cluster) {
+func Test(cluster teardown.Cluster) {
 	cluster.Setup()
 
 	// Tests
-	tests := teardown.NewEtcdTests(cluster.addresses)
+	tests := teardown.NewEtcdTests(cluster.Addresses())
 	tests.Step()
 
 	cluster.Teardown()
