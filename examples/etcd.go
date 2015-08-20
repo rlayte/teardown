@@ -1,92 +1,147 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"log"
+	"io"
+	"os"
+	"os/exec"
 
-	etcdclient "github.com/coreos/go-etcd/etcd"
+	"github.com/coreos/go-etcd/etcd"
 	"github.com/rlayte/teardown"
-	"github.com/rlayte/teardown/adapters/etcd"
 )
 
-type EtcdTests struct {
-	addresses []string
-	requests  []teardown.Request
-	client    *etcdclient.Client
-	count     int
+const (
+	ClientPort string = ":4000"
+	PeerPort   string = ":4004"
+)
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
 }
 
-func NewEtcdTests(addresses []string) *EtcdTests {
-	t := EtcdTests{}
+func ExecWithLog(cmd *exec.Cmd, i int) {
+	stdoutPipe, err := cmd.StdoutPipe()
+	check(err)
+	stderrPipe, err := cmd.StderrPipe()
+	check(err)
 
-	t.addresses = addresses
-	t.client = etcdclient.NewClient(addresses)
-	t.requests = []teardown.Request{}
+	outFile, err := os.Create(fmt.Sprintf("log/etcd_%d.out", i))
+	check(err)
+	errFile, err := os.Create(fmt.Sprintf("log/etcd_%d.err", i))
+	check(err)
 
-	return &t
+	outWriter := bufio.NewWriter(outFile)
+	defer outWriter.Flush()
+	errWriter := bufio.NewWriter(errFile)
+	defer errWriter.Flush()
+
+	err = cmd.Start()
+	check(err)
+
+	go io.Copy(outWriter, stdoutPipe)
+	go io.Copy(errWriter, stderrPipe)
+
+	cmd.Wait()
 }
 
-func (t *EtcdTests) Step() error {
-	request := teardown.Request{
-		Key:   fmt.Sprintf("/%d", t.count),
-		Value: "hi!",
+func (c *EtcdCluster) nameFromPeer(peer string) string {
+	for i, address := range c.peerAddresses {
+		if peer == address {
+			return name(i)
+		}
 	}
-
-	setResp, err := t.client.Set(request.Key, request.Value, 0)
-
-	if err != nil {
-		request.Status = teardown.Fail
-	} else {
-		request.Status = teardown.Ack
-	}
-
-	getResp, err := t.client.Get(request.Key, false, false)
-
-	if err != nil {
-		request.Response = teardown.No
-	} else {
-		request.Response = teardown.Yes
-	}
-
-	log.Println("Response", setResp)
-	log.Println("Error", err)
-	log.Println("Get response", getResp)
-
-	t.requests = append(t.requests, request)
-	t.count++
-
-	return nil
+	panic(fmt.Sprintf("No such peer: %s", peer))
 }
 
-func (t *EtcdTests) Finalize() {
-	successfulWrites := 0
-	correctFailures := 0
-	missingWrites := 0
-	extraWrites := 0
+func name(i int) string {
+	return fmt.Sprintf("peer%d", i)
+}
 
-	for _, request := range t.requests {
-		if request.Status == teardown.Ack && request.Response == teardown.Yes {
-			successfulWrites++
+type EtcdCluster struct {
+	peerAddresses   []string
+	clientAddresses []string // for clients
+}
+
+func (c *EtcdCluster) Addresses() []string {
+	return c.clientAddresses
+}
+
+func (c *EtcdCluster) Setup() {
+	var cmd *exec.Cmd
+
+	var allPeers string
+
+	for i, peerAddress := range c.peerAddresses {
+		if i != 0 {
+			allPeers += ","
 		}
-		if request.Status == teardown.Fail && request.Response == teardown.Yes {
-			extraWrites++
-		}
-		if request.Status == teardown.Fail && request.Response == teardown.No {
-			correctFailures++
-		}
-		if request.Status == teardown.Ack && request.Response == teardown.No {
-			missingWrites++
-		}
+		allPeers += name(i) + "=" + peerAddress
 	}
 
-	log.Println("Successful writes:", successfulWrites)
-	log.Println("Correct failures:", correctFailures)
-	log.Println("Missing writes:", missingWrites)
-	log.Println("Extra writes", extraWrites)
+	for i, peerAddress := range c.peerAddresses {
+		clientAddress := c.clientAddresses[i]
+		cmd = exec.Command(
+			"etcd",
+			"--name", c.nameFromPeer(peerAddress),
+			"--listen-peer-urls", peerAddress,
+			"--initial-advertise-peer-urls", peerAddress,
+			"--listen-client-urls", clientAddress,
+			"--advertise-client-urls", clientAddress,
+			"--initial-cluster", allPeers,
+			"--initial-cluster-state", "new",
+			"--initial-cluster-token", "etcd-teardown-cluster-1",
+		)
+		go ExecWithLog(cmd, i) // will panic if something goes wrong.
+	}
+}
+
+func (c *EtcdCluster) Teardown() {
+}
+
+func NewEtcdCluster() *EtcdCluster {
+	var peerAddresses, clientAddresses []string
+	hosts := []string{
+		"127.0.0.12",
+		"127.0.0.13",
+		"127.0.0.14",
+		"127.0.0.15",
+		"127.0.0.16",
+	}
+	peerAddresses = make([]string, len(hosts))
+	clientAddresses = make([]string, len(hosts))
+
+	for i, host := range hosts {
+		peerAddresses[i] = "http://" + host + PeerPort
+		clientAddresses[i] = "http://" + host + ClientPort
+	}
+
+	return &EtcdCluster{peerAddresses, clientAddresses}
+}
+
+type EtcdClient struct {
+	client *etcd.Client
+}
+
+func (c EtcdClient) Get(key string) (string, error) {
+	_, err := c.client.Get(key, false, false)
+	return "", err
+}
+
+func (c EtcdClient) Put(key string, value string) error {
+	_, err := c.client.Set(key, value, 0)
+	return err
+}
+
+func NewEtcdClient(cluster teardown.Cluster) teardown.Client {
+	return EtcdClient{etcd.NewClient(cluster.Addresses())}
 }
 
 func main() {
-	cluster := etcd.Cluster()
-	tests := NewEtcdTests(cluster.Addresses())
-	teardown.RunTests(cluster, tests)
+	cluster := NewEtcdCluster()
+	client := NewEtcdClient(cluster)
+	tests := teardown.NewTestRunner(cluster, client)
+	tests.Run()
 }
