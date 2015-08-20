@@ -1,21 +1,11 @@
 package main
 
-import "github.com/rlayte/jepsen-go"
+import (
+	"github.com/coreos/go-etcd/etcd"
+	"github.com/rlayte/teardown"
+)
 
-type EtcdCluster struct {
-	addresses []string
-}
-
-func (c *EtcdCluster) Setup() error {
-	return nil
-}
-
-func (c *EtcdCluster) Teardown() error {
-	return nil
-}
-
-func main() {
-	cluster := EtcdCluster{}
+func Test(cluster Cluster) {
 	cluster.Setup()
 
 	// Tests
@@ -23,4 +13,9 @@ func main() {
 	tests.Step()
 
 	cluster.Teardown()
+}
+
+func main() {
+	cluster := etcd.Cluster()
+	Test(cluster)
 }
