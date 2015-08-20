@@ -16,12 +16,12 @@ const (
 )
 
 type EtcdAdapter struct {
-	peer_addresses   []string
-	client_addresses []string // for clients
+	peerAddresses   []string
+	clientAddresses []string // for clients
 }
 
 func (c *EtcdAdapter) Addresses() []string {
-	return c.client_addresses
+	return c.clientAddresses
 }
 
 func check(e error) {
@@ -36,27 +36,27 @@ func ExecWithLog(cmd *exec.Cmd, i int) {
 	stderrPipe, err := cmd.StderrPipe()
 	check(err)
 
-	out_file, err := os.Create(fmt.Sprintf("log/etcd_%d.out", i))
+	outFile, err := os.Create(fmt.Sprintf("log/etcd_%d.out", i))
 	check(err)
-	err_file, err := os.Create(fmt.Sprintf("log/etcd_%d.err", i))
+	errFile, err := os.Create(fmt.Sprintf("log/etcd_%d.err", i))
 	check(err)
 
-	out_writer := bufio.NewWriter(out_file)
-	defer out_writer.Flush()
-	err_writer := bufio.NewWriter(err_file)
-	defer err_writer.Flush()
+	outWriter := bufio.NewWriter(outFile)
+	defer outWriter.Flush()
+	errWriter := bufio.NewWriter(errFile)
+	defer errWriter.Flush()
 
 	err = cmd.Start()
 	check(err)
 
-	go io.Copy(out_writer, stdoutPipe)
-	go io.Copy(err_writer, stderrPipe)
+	go io.Copy(outWriter, stdoutPipe)
+	go io.Copy(errWriter, stderrPipe)
 
 	cmd.Wait()
 }
 
 func (c *EtcdAdapter) nameFromPeer(peer string) string {
-	for i, address := range c.peer_addresses {
+	for i, address := range c.peerAddresses {
 		if peer == address {
 			return name(i)
 		}
@@ -71,17 +71,17 @@ func name(i int) string {
 func (c *EtcdAdapter) Setup() {
 	var cmd *exec.Cmd
 
-	var all_peers string
+	var allPeers string
 
-	for i, peer_address := range c.peer_addresses {
+	for i, peerAddress := range c.peerAddresses {
 		if i != 0 {
-			all_peers += ","
+			allPeers += ","
 		}
-		all_peers += name(i) + "=" + peer_address
+		allPeers += name(i) + "=" + peerAddress
 	}
 
-	for i, peer_address := range c.peer_addresses {
-		client_address := c.client_addresses[i]
+	for i, peer_address := range c.peerAddresses {
+		client_address := c.clientAddresses[i]
 		cmd = exec.Command(
 			"etcd",
 			"--name", c.nameFromPeer(peer_address),
@@ -89,7 +89,7 @@ func (c *EtcdAdapter) Setup() {
 			"--initial-advertise-peer-urls", peer_address,
 			"--listen-client-urls", client_address,
 			"--advertise-client-urls", client_address,
-			"--initial-cluster", all_peers,
+			"--initial-cluster", allPeers,
 			"--initial-cluster-state", "new",
 			"--initial-cluster-token", "etcd-teardown-cluster-1",
 		)
@@ -101,7 +101,7 @@ func (c *EtcdAdapter) Teardown() {
 }
 
 func Cluster() *EtcdAdapter {
-	var peer_addresses, client_addresses []string
+	var peerAddresses, clientAddresses []string
 	hosts := []string{
 		"127.0.0.12",
 		"127.0.0.13",
@@ -109,13 +109,13 @@ func Cluster() *EtcdAdapter {
 		"127.0.0.15",
 		"127.0.0.16",
 	}
-	peer_addresses = make([]string, len(hosts))
-	client_addresses = make([]string, len(hosts))
+	peerAddresses = make([]string, len(hosts))
+	clientAddresses = make([]string, len(hosts))
 
 	for i, host := range hosts {
-		peer_addresses[i] = "http://" + host + PeerPort
-		client_addresses[i] = "http://" + host + ClientPort
+		peerAddresses[i] = "http://" + host + PeerPort
+		clientAddresses[i] = "http://" + host + ClientPort
 	}
 
-	return &EtcdAdapter{peer_addresses, client_addresses}
+	return &EtcdAdapter{peerAddresses, clientAddresses}
 }

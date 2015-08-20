@@ -1,6 +1,10 @@
 package teardown
 
-import "log"
+import (
+	"bufio"
+	"log"
+	"os"
+)
 
 type Tests interface {
 	Step() error
@@ -31,7 +35,13 @@ func RunTests(cluster Cluster, tests Tests) {
 	log.Println("Running tests")
 	cluster.Setup()
 
-	tests.Step()
+	bio := bufio.NewReader(os.Stdin)
+	for i := 0; i < 100; i++ {
+		bio.ReadLine()
+		log.Println("Next")
+		tests.Step()
+	}
+
 	tests.Finalize()
 
 	cluster.Teardown()
