@@ -47,7 +47,7 @@ func ExecWithLog(cmd *exec.Cmd, i int) {
 	cmd.Wait()
 }
 
-func (c *EtcdAdapter) nameFromPeer(peer string) string {
+func (c *EtcdCluster) nameFromPeer(peer string) string {
 	for i, address := range c.peerAddresses {
 		if peer == address {
 			return name(i)
@@ -60,16 +60,16 @@ func name(i int) string {
 	return fmt.Sprintf("peer%d", i)
 }
 
-type EtcdAdapter struct {
+type EtcdCluster struct {
 	peerAddresses   []string
 	clientAddresses []string // for clients
 }
 
-func (c *EtcdAdapter) Addresses() []string {
+func (c *EtcdCluster) Addresses() []string {
 	return c.clientAddresses
 }
 
-func (c *EtcdAdapter) Setup() {
+func (c *EtcdCluster) Setup() {
 	var cmd *exec.Cmd
 
 	var allPeers string
@@ -98,10 +98,10 @@ func (c *EtcdAdapter) Setup() {
 	}
 }
 
-func (c *EtcdAdapter) Teardown() {
+func (c *EtcdCluster) Teardown() {
 }
 
-func Cluster() *EtcdAdapter {
+func NewEtcdCluster() *EtcdCluster {
 	var peerAddresses, clientAddresses []string
 	hosts := []string{
 		"127.0.0.12",
@@ -118,7 +118,7 @@ func Cluster() *EtcdAdapter {
 		clientAddresses[i] = "http://" + host + ClientPort
 	}
 
-	return &EtcdAdapter{peerAddresses, clientAddresses}
+	return &EtcdCluster{peerAddresses, clientAddresses}
 }
 
 type EtcdClient struct {
@@ -135,9 +135,13 @@ func (c EtcdClient) Put(key string, value string) error {
 	return err
 }
 
+func NewEtcdClient(cluster teardown.Cluster) teardown.Client {
+	return EtcdClient{etcd.NewClient(cluster.Addresses())}
+}
+
 func main() {
-	cluster := Cluster()
-	client := EtcdClient{etcd.NewClient(cluster.Addresses())}
+	cluster := NewEtcdCluster()
+	client := NewEtcdClient(cluster)
 	tests := teardown.NewTestRunner(cluster, client)
 	tests.Run()
 }
