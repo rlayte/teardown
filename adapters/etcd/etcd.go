@@ -81,14 +81,14 @@ func (c *EtcdAdapter) Setup() {
 	}
 
 	for i, peerAddress := range c.peerAddresses {
-		client_address := c.clientAddresses[i]
+		clientAddress := c.clientAddresses[i]
 		cmd = exec.Command(
 			"etcd",
 			"--name", c.nameFromPeer(peerAddress),
 			"--listen-peer-urls", peerAddress,
 			"--initial-advertise-peer-urls", peerAddress,
-			"--listen-client-urls", client_address,
-			"--advertise-client-urls", client_address,
+			"--listen-client-urls", clientAddress,
+			"--advertise-client-urls", clientAddress,
 			"--initial-cluster", allPeers,
 			"--initial-cluster-state", "new",
 			"--initial-cluster-token", "etcd-teardown-cluster-1",
