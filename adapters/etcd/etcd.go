@@ -93,7 +93,7 @@ func (c *EtcdAdapter) Setup() {
 			"--initial-cluster-state", "new",
 			"--initial-cluster-token", "etcd-teardown-cluster-1",
 		)
-		ExecWithLog(cmd, i) // will panic if something goes wrong.
+		go ExecWithLog(cmd, i) // will panic if something goes wrong.
 	}
 }
 

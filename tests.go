@@ -1,7 +1,9 @@
 package teardown
 
+import "log"
+
 type Tests interface {
-	Step()
+	Step() error
 	Finalize()
 }
 
@@ -19,16 +21,18 @@ const (
 )
 
 type Request struct {
-	status   RequestStatus
-	response ResponseStatus
-	key      string
-	value    string
+	Status   RequestStatus
+	Response ResponseStatus
+	Key      string
+	Value    string
 }
 
 func RunTests(cluster Cluster, tests Tests) {
+	log.Println("Running tests")
 	cluster.Setup()
 
 	tests.Step()
+	tests.Finalize()
 
 	cluster.Teardown()
 }
