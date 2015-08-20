@@ -30,16 +30,8 @@ type Request struct {
 type TestRunner struct {
 	requests []Request
 	client   Client
+	cluster  Cluster
 	count    int
-}
-
-func NewTestRunner(client Client) *TestRunner {
-	t := TestRunner{
-		requests: []Request{},
-		client:   client,
-	}
-
-	return &t
 }
 
 func (t *TestRunner) Step() error {
@@ -73,7 +65,7 @@ func (t *TestRunner) Step() error {
 	return nil
 }
 
-func (t *TestRunner) Finalize() {
+func (t *TestRunner) Report() {
 	successfulWrites := 0
 	correctFailures := 0
 	missingWrites := 0
@@ -100,18 +92,26 @@ func (t *TestRunner) Finalize() {
 	log.Println("Extra writes", extraWrites)
 }
 
-func RunTests(cluster Cluster, client Client) {
-	cluster.Setup()
-	tests := NewTestRunner(client)
+func (t *TestRunner) Run() {
+	t.cluster.Setup()
 
 	bio := bufio.NewReader(os.Stdin)
 	for i := 0; i < 100; i++ {
 		bio.ReadLine()
 		log.Println("Next")
-		tests.Step()
+		t.Step()
 	}
 
-	tests.Finalize()
+	t.Report()
+	t.cluster.Teardown()
+}
 
-	cluster.Teardown()
+func NewTestRunner(cluster Cluster, client Client) *TestRunner {
+	t := TestRunner{
+		requests: []Request{},
+		client:   client,
+		cluster:  cluster,
+	}
+
+	return &t
 }
