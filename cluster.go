@@ -1,4 +1,4 @@
-package main
+package teardown
 
 type Cluster interface {
 	Setup() error
