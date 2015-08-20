@@ -55,10 +55,44 @@ func ExecWithLog(cmd *exec.Cmd, i int) {
 	cmd.Wait()
 }
 
+func (c *EtcdAdapter) nameFromPeer(peer string) string {
+	for i, address := range c.peer_addresses {
+		if peer == address {
+			return name(i)
+		}
+	}
+	panic(fmt.Sprintf("No such peer: %s", peer))
+}
+
+func name(i int) string {
+	return fmt.Sprintf("peer%d", i)
+}
+
 func (c *EtcdAdapter) Setup() {
 	var cmd *exec.Cmd
-	for i, address := range c.peer_addresses {
-		cmd = exec.Command("etcd", "--initial-cluster", address)
+
+	var all_peers string
+
+	for i, peer_address := range c.peer_addresses {
+		if i != 0 {
+			all_peers += ","
+		}
+		all_peers += name(i) + "=" + peer_address
+	}
+
+	for i, peer_address := range c.peer_addresses {
+		client_address := c.client_addresses[i]
+		cmd = exec.Command(
+			"etcd",
+			"--name", c.nameFromPeer(peer_address),
+			"--listen-peer-urls", peer_address,
+			"--initial-advertise-peer-urls", peer_address,
+			"--listen-client-urls", client_address,
+			"--advertise-client-urls", client_address,
+			"--initial-cluster", all_peers,
+			"--initial-cluster-state", "new",
+			"--initial-cluster-token", "etcd-teardown-cluster-1",
+		)
 		ExecWithLog(cmd, i) // will panic if something goes wrong.
 	}
 }
@@ -79,8 +113,8 @@ func Cluster() *EtcdAdapter {
 	client_addresses = make([]string, len(hosts))
 
 	for i, host := range hosts {
-		peer_addresses[i] = host + PeerPort
-		client_addresses[i] = host + ClientPort
+		peer_addresses[i] = "http://" + host + PeerPort
+		client_addresses[i] = "http://" + host + ClientPort
 	}
 
 	return &EtcdAdapter{peer_addresses, client_addresses}
