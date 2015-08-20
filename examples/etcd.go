@@ -138,5 +138,6 @@ func (c EtcdClient) Put(key string, value string) error {
 func main() {
 	cluster := Cluster()
 	client := EtcdClient{etcd.NewClient(cluster.Addresses())}
-	teardown.RunTests(cluster, client)
+	tests := teardown.NewTestRunner(cluster, client)
+	tests.Run()
 }
