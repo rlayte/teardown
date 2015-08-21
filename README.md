@@ -13,6 +13,7 @@ To use teardown we make a few assumptions about your system:
 - Hosts 127.0.0.1/24 are available to bind to.
 - You have [iptables]() installed.
 - You have [tc]() installed.
+- You have whatever you're testing installed.
 
 Because teardown messes with some core networking options it's probably safest to run in a sandbox environment like Docker.
 
