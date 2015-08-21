@@ -6,15 +6,28 @@ import (
 	"github.com/rlayte/teardown/iptables"
 )
 
-type Nemesis struct {
+type Nemesis interface {
+	PartitionHalf()
+	PartitionRandom()
+	PartitionSingle(node int)
+	PartitionLeader()
+	Bridge()
+	Fail(node int)
+	FailRandom()
+	FailLeader()
+	Heal()
 }
 
-func PartitionHalf(nodes []string) {
-	half := len(nodes) / 2
-	iptables.Partition(nodes, half)
+type LocalNemesis struct {
+	nodes []string
 }
 
-func PartitionRandom(nodes []string) {
-	position := rand.Intn(len(nodes))
-	iptables.Partition(nodes, position)
+func (n *LocalNemesis) PartitionHalf() {
+	half := len(n.nodes) / 2
+	iptables.Partition(n.nodes, half)
+}
+
+func (n *LocalNemesis) PartitionRandom() {
+	position := rand.Intn(len(n.nodes))
+	iptables.Partition(n.nodes, position)
 }

@@ -1,10 +1,8 @@
 package teardown
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"os"
 )
 
 type RequestStatus int
@@ -95,12 +93,7 @@ func (t *TestRunner) Report() {
 func (t *TestRunner) Run() {
 	t.cluster.Setup()
 
-	tc.Slow()
-
-	bio := bufio.NewReader(os.Stdin)
 	for i := 0; i < 100; i++ {
-		bio.ReadLine()
-		log.Println("Next")
 		t.Step()
 	}
 
