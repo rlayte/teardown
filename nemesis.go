@@ -31,3 +31,24 @@ func (n *LocalNemesis) PartitionRandom() {
 	position := rand.Intn(len(n.nodes))
 	iptables.Partition(n.nodes, position)
 }
+
+func (n *LocalNemesis) PartitionSingle(node int) {
+}
+
+func (n *LocalNemesis) PartitionLeader() {
+}
+
+func (n *LocalNemesis) Bridge() {
+}
+
+func (n *LocalNemesis) Fail(node int) {
+}
+
+func (n *LocalNemesis) FailRandom() {
+}
+
+func (n *LocalNemesis) FailLeader() {
+}
+
+func (n *LocalNemesis) Heal() {
+}

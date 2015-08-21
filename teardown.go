@@ -29,6 +29,7 @@ type TestRunner struct {
 	requests []Request
 	client   Client
 	cluster  Cluster
+	nemesis  Nemesis
 	count    int
 }
 
@@ -106,6 +107,7 @@ func NewTestRunner(cluster Cluster, client Client) *TestRunner {
 		requests: []Request{},
 		client:   client,
 		cluster:  cluster,
+		nemesis:  &LocalNemesis{},
 	}
 
 	return &t
