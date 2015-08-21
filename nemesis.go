@@ -1,12 +1,20 @@
 package teardown
 
+import (
+	"math/rand"
+
+	"github.com/rlayte/teardown/iptables"
+)
+
 type Nemesis struct {
 }
 
-func (n *Nemesis) Partition(cluster Cluster) bool {
-	return false
+func PartitionHalf(nodes []string) {
+	half := len(nodes) / 2
+	iptables.Partition(nodes, half)
 }
 
-func (n *Nemesis) Heal(cluster Cluster) bool {
-	return false
+func PartitionRandom(nodes []string) {
+	position := rand.Intn(len(nodes))
+	iptables.Partition(nodes, position)
 }
