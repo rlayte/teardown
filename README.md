@@ -1,6 +1,6 @@
 # Teardown
 
-Teardown is a library for testing distributed systems --- specifically distributed key/value stores. We were heavily inspired by [@aphyr's]() [Jepsen](), but teardown differs in a number of ways:
+Teardown is a library for testing distributed systems --- specifically distributed key/value stores. We were heavily inspired by [@aphyr's](http://aphyr.com) [Jepsen](https://github.com/aphyr/jepsen), but teardown differs in a number of ways:
 
 - Written in Go.
 - Doesn't bundle installation into tests.
@@ -10,9 +10,9 @@ Teardown is a library for testing distributed systems --- specifically distribut
 
 To use teardown we make a few assumptions about your system:
 
-- Hosts 127.0.0.1/24 are available to bind to.
-- You have [iptables]() installed.
-- You have [tc]() installed.
+- Hosts 127.0.0.1/24 are available to bind to. (Default on Linux)
+- You have [iptables](https://en.wikipedia.com/wiki/iptables) installed.
+- You have [tc](http://lartc.org/manpages/tc.txt) installed. (`sudo apt-get install iproute`)
 - You have whatever you're testing installed.
 
 Because teardown messes with some core networking options it's probably safest to run in a sandbox environment like Docker.
@@ -37,12 +37,18 @@ type MyCluster struct {
 func (c *MyCluster) Setup() {
   // Calls start on an imaginary service
   c.addresses = []string{"127.0.0.2", "127.0.0.3", "127.0.0.4"}
-  exec.Command("mycluster", "start", c.addresses)
+  err := exec.Command("mycluster", "start", c.addresses).Start()
+  if err != nil {
+    // handle error
+  }
 }
 
 func (c *MyCluster) Teardown() {
   // Calls stop on an imaginary service
-  exec.Command("mything", "stop", c.addresses)
+  err := exec.Command("mything", "stop", c.addresses).Run()
+  if err != nil {
+    // handle error
+  }
 }
 
 func (c *MyCluster) Addresses() []string {
@@ -103,6 +109,8 @@ main () {
 And run this with:
 
     $ go run mycluster.go
+
+teardown really is a library for testing distributed systems more than anything else.
 
 ## Documentation
 
