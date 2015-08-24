@@ -93,7 +93,6 @@ func (t *TestRunner) Report() {
 
 func (t *TestRunner) Run() {
 	t.cluster.Setup()
-
 	for i := 0; i < 100; i++ {
 		t.Step()
 	}
