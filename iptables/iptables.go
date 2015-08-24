@@ -11,7 +11,7 @@ func iptables(args string) []byte {
 	out, err := exec.Command("iptables", strings.Split(args, " ")...).Output()
 
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Iptables error: ", err, args)
 	}
 
 	return out

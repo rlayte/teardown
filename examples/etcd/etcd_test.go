@@ -3,6 +3,7 @@
 package etcd
 
 import (
+	"fmt"
 	"log"
 	"testing"
 
@@ -21,15 +22,37 @@ func init() {
 	nemesis = teardown.NewNemesis(cluster)
 }
 
+type KeyValue struct {
+	key   string
+	value string
+}
+
 func TestPartition(t *testing.T) {
-	client.Set("foo", "bar", 0)
-	value, err := client.Get("foo", false, false)
+	requests := []KeyValue{}
 
-	if err != nil {
-		t.Error(err)
+	nemesis.PartitionHalf()
+
+	for i := 0; i < 2000; i++ {
+		key := fmt.Sprintf("etcd-key-%d", i)
+		value := fmt.Sprintf("etcd-value-%d", i)
+		requests = append(requests, KeyValue{key, value})
+		log.Println("Putting", key, value)
+		client.Set(key, value, 0)
 	}
 
-	if value.Action != "bar" {
-		t.Error("Foo should equal bar")
+	for _, request := range requests {
+		resp, err := client.Get(request.key, false, false)
+
+		log.Println("Getting", request.key)
+
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if resp.Node.Value != request.value {
+			t.Errorf("%s should equal %s", resp.Node.Value, request.value)
+		}
 	}
+
+	nemesis.Heal()
 }

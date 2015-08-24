@@ -2,7 +2,10 @@ package teardown
 
 import (
 	"fmt"
+	"log"
 	"math/rand"
+	"net"
+	"net/url"
 
 	"github.com/rlayte/teardown/iptables"
 )
@@ -33,6 +36,7 @@ func (n *LocalNemesis) positionToAddress(position int) string {
 
 func (n *LocalNemesis) PartitionHalf() {
 	half := len(n.nodes) / 2
+	log.Println("Partitioning network:", half)
 	n.iptables.PartitionLevel(n.nodes, half)
 }
 
@@ -64,5 +68,18 @@ func (n *LocalNemesis) Heal() {
 }
 
 func NewNemesis(cluster Cluster) *LocalNemesis {
-	return &LocalNemesis{cluster.Addresses(), iptables.UnixIpTables{}}
+	nodes := []string{}
+
+	for _, address := range cluster.Addresses() {
+		u, err := url.Parse(address)
+
+		if err != nil {
+			panic(err)
+		}
+
+		host, _, _ := net.SplitHostPort(u.Host)
+		nodes = append(nodes, host)
+	}
+
+	return &LocalNemesis{nodes, iptables.UnixIpTables{}}
 }

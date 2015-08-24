@@ -77,7 +77,6 @@ func name(i int) string {
 
 func (c *EtcdAdapter) Setup() {
 	var cmd *exec.Cmd
-
 	var allPeers string
 
 	go c.serveProcesses()
@@ -152,11 +151,15 @@ func NewEtcdCluster() *EtcdAdapter {
 		clientAddresses[i] = "http://" + host + ClientPort
 	}
 
-	return &EtcdAdapter{
+	cluster := &EtcdAdapter{
 		peerAddresses:   peerAddresses,
 		clientAddresses: clientAddresses,
 		processes:       []*os.Process{},
 		launchProcess:   make(chan *os.Process),
 		killAll:         make(chan bool),
 	}
+
+	cluster.Setup()
+
+	return cluster
 }
