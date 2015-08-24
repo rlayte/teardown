@@ -80,6 +80,8 @@ func TestPartition(t *testing.T) {
   nemesis.PartitionHalf()
 
   // Run tests here
+
+  nemesis.Heal()
 }
 ```
 

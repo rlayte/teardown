@@ -41,7 +41,6 @@ func (n *LocalNemesis) PartitionRandom() {
 	n.PartitionSingle(position)
 }
 
-// What does this do?
 func (n *LocalNemesis) PartitionSingle(position int) {
 	n1 := n.positionToAddress(position)
 	for _, n2 := range n.nodes {
@@ -52,9 +51,9 @@ func (n *LocalNemesis) PartitionSingle(position int) {
 }
 
 func (n *LocalNemesis) Bridge() {
-	bridge_index := len(n.nodes) / 2 // Fails with empty list.
-	for _, n1 := range n.nodes[:bridge_index] {
-		for _, n2 := range n.nodes[bridge_index+1:] {
+	position := len(n.nodes) / 2
+	for _, n1 := range n.nodes[:position] {
+		for _, n2 := range n.nodes[position+1:] {
 			n.iptables.Deny(n1, n2)
 		}
 	}
