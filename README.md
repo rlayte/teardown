@@ -30,6 +30,8 @@ teardown exposes a `Cluster` interfaces that you must implement to with the spec
 ```go
 // mycluster.go
 
+package mycluster
+
 type MyCluster struct {
   addresses []string
 }
@@ -63,6 +65,8 @@ Once you have a concrete implementation of `Cluster` you can pass it to a `Nemes
 
 ```go
 // mycluster_test.go
+
+package mycluster
 
 var cluster teardown.Cluster
 var nemesis teardown.Nemesis
