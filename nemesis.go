@@ -11,11 +11,7 @@ type Nemesis interface {
 	PartitionHalf()
 	PartitionRandom()
 	PartitionSingle(position int)
-	PartitionLeader()
 	Bridge()
-	Fail(position int)
-	FailRandom()
-	FailLeader()
 	Heal()
 }
 
@@ -41,14 +37,17 @@ func (n *LocalNemesis) PartitionHalf() {
 
 func (n *LocalNemesis) PartitionRandom() {
 	position := rand.Intn(len(n.nodes))
-	iptables.PartitionLevel(n.nodes, position)
+	n.PartitionSingle(position)
 }
 
 // What does this do?
-func (n *LocalNemesis) PartitionSingle(n1 int) {
-}
-
-func (n *LocalNemesis) PartitionLeader() {
+func (n *LocalNemesis) PartitionSingle(position int) {
+	n1 := n.positionToAddress(position)
+	for _, n2 := range n.nodes {
+		if n1 != n2 {
+			iptables.Deny(n1, n2)
+		}
+	}
 }
 
 func (n *LocalNemesis) Bridge() {
@@ -58,23 +57,6 @@ func (n *LocalNemesis) Bridge() {
 			iptables.Deny(n1, n2)
 		}
 	}
-}
-
-func (n *LocalNemesis) Fail(position int) {
-	n1 := n.positionToAddress(position)
-	for _, n2 := range n.nodes {
-		if n1 != n2 {
-			iptables.Deny(n1, n2)
-		}
-	}
-}
-
-func (n *LocalNemesis) FailRandom() {
-	position := rand.Intn(len(n.nodes))
-	n.Fail(position)
-}
-
-func (n *LocalNemesis) FailLeader() {
 }
 
 func (n *LocalNemesis) Heal() {
