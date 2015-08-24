@@ -16,7 +16,7 @@ var nemesis teardown.Nemesis
 
 func init() {
 	log.Println("Setting up etcd cluster")
-	cluster = New()
+	cluster = NewEtcdCluster()
 	client = etcd.NewClient(cluster.Addresses())
 	nemesis = teardown.NewNemesis(cluster)
 }

@@ -135,7 +135,7 @@ func (c *EtcdAdapter) serveProcesses() {
 	}
 }
 
-func New() *EtcdAdapter {
+func NewEtcdCluster() *EtcdAdapter {
 	var peer_addresses, client_addresses []string
 	hosts := []string{
 		"127.0.0.12",
