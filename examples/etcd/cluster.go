@@ -1,6 +1,6 @@
-// server.go
+// cluster.go
 
-package server
+package etcd
 
 import (
 	"bufio"
