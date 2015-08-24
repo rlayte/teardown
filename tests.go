@@ -94,7 +94,6 @@ func (t *TestRunner) Report() {
 
 func (t *TestRunner) Run() {
 	t.cluster.Setup()
-
 	bio := bufio.NewReader(os.Stdin)
 	for i := 0; i < 100; i++ {
 		bio.ReadLine()
