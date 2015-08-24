@@ -108,6 +108,15 @@ func (c *EtcdAdapter) Setup() {
 
 func (c *EtcdAdapter) Teardown() {
 	c.killAll <- true
+	// Might be a race condition:
+
+	for i := range c.peer_addresses {
+		err := os.RemoveAll(name(i) + ".etcd")
+		if err != nil {
+			panic(err)
+		}
+	}
+
 }
 
 func (c *EtcdAdapter) serveProcesses() {
