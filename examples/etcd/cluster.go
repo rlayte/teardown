@@ -16,15 +16,15 @@ const (
 )
 
 type EtcdAdapter struct {
-	peer_addresses   []string
-	client_addresses []string // for clients
-	processes        []*os.Process
-	launchProcess    chan *os.Process
-	killAll          chan bool
+	peerAddresses   []string
+	clientAddresses []string // for clients
+	processes       []*os.Process
+	launchProcess   chan *os.Process
+	killAll         chan bool
 }
 
 func (c *EtcdAdapter) Addresses() []string {
-	return c.client_addresses
+	return c.clientAddresses
 }
 
 func check(e error) {
@@ -39,23 +39,23 @@ func (c *EtcdAdapter) ExecWithLog(cmd *exec.Cmd, i int) {
 	stderrPipe, err := cmd.StderrPipe()
 	check(err)
 
-	out_file, err := os.Create(fmt.Sprintf("/tmp/etcd_%d.out", i))
+	outFile, err := os.Create(fmt.Sprintf("/tmp/etcd_%d.out", i))
 	check(err)
-	err_file, err := os.Create(fmt.Sprintf("/tmp/etcd_%d.err", i))
+	errFile, err := os.Create(fmt.Sprintf("/tmp/etcd_%d.err", i))
 	check(err)
 
-	out_writer := bufio.NewWriter(out_file)
-	err_writer := bufio.NewWriter(err_file)
+	outWriter := bufio.NewWriter(outFile)
+	errWriter := bufio.NewWriter(errFile)
 
-	defer out_writer.Flush()
-	defer err_writer.Flush()
+	defer outWriter.Flush()
+	defer errWriter.Flush()
 
 	// Start the command
 	err = cmd.Start()
 	check(err)
 
-	go io.Copy(out_writer, stdoutPipe)
-	go io.Copy(err_writer, stderrPipe)
+	go io.Copy(outWriter, stdoutPipe)
+	go io.Copy(errWriter, stderrPipe)
 
 	c.launchProcess <- cmd.Process
 
@@ -63,7 +63,7 @@ func (c *EtcdAdapter) ExecWithLog(cmd *exec.Cmd, i int) {
 }
 
 func (c *EtcdAdapter) nameFromPeer(peer string) string {
-	for i, address := range c.peer_addresses {
+	for i, address := range c.peerAddresses {
 		if peer == address {
 			return name(i)
 		}
@@ -78,27 +78,27 @@ func name(i int) string {
 func (c *EtcdAdapter) Setup() {
 	var cmd *exec.Cmd
 
-	var all_peers string
+	var allPeers string
 
 	go c.serveProcesses()
 
-	for i, peer_address := range c.peer_addresses {
+	for i, peerAddress := range c.peerAddresses {
 		if i != 0 {
-			all_peers += ","
+			allPeers += ","
 		}
-		all_peers += name(i) + "=" + peer_address
+		allPeers += name(i) + "=" + peerAddress
 	}
 
-	for i, peer_address := range c.peer_addresses {
-		client_address := c.client_addresses[i]
+	for i, peerAddress := range c.peerAddresses {
+		clientAddress := c.clientAddresses[i]
 		cmd = exec.Command(
 			"etcd",
-			"--name", c.nameFromPeer(peer_address),
-			"--listen-peer-urls", peer_address,
-			"--initial-advertise-peer-urls", peer_address,
-			"--listen-client-urls", client_address,
-			"--advertise-client-urls", client_address,
-			"--initial-cluster", all_peers,
+			"--name", c.nameFromPeer(peerAddress),
+			"--listen-peer-urls", peerAddress,
+			"--initial-advertise-peer-urls", peerAddress,
+			"--listen-client-urls", clientAddress,
+			"--advertise-client-urls", clientAddress,
+			"--initial-cluster", allPeers,
 			"--initial-cluster-state", "new",
 			"--initial-cluster-token", "etcd-teardown-cluster-1",
 		)
@@ -110,7 +110,7 @@ func (c *EtcdAdapter) Teardown() {
 	c.killAll <- true
 	// Might be a race condition:
 
-	for i := range c.peer_addresses {
+	for i := range c.peerAddresses {
 		err := os.RemoveAll(name(i) + ".etcd")
 		if err != nil {
 			panic(err)
@@ -125,9 +125,9 @@ func (c *EtcdAdapter) serveProcesses() {
 		select {
 		case process = <-c.launchProcess:
 			c.processes = append(c.processes, process)
-		case random_bool := <-c.killAll:
+		case randomBool := <-c.killAll:
 			fmt.Println("2")
-			random_bool = random_bool
+			randomBool = randomBool
 			for _, p := range c.processes {
 				p.Kill()
 			}
@@ -136,7 +136,7 @@ func (c *EtcdAdapter) serveProcesses() {
 }
 
 func NewEtcdCluster() *EtcdAdapter {
-	var peer_addresses, client_addresses []string
+	var peerAddresses, clientAddresses []string
 	hosts := []string{
 		"127.0.0.12",
 		"127.0.0.13",
@@ -144,19 +144,19 @@ func NewEtcdCluster() *EtcdAdapter {
 		"127.0.0.15",
 		"127.0.0.16",
 	}
-	peer_addresses = make([]string, len(hosts))
-	client_addresses = make([]string, len(hosts))
+	peerAddresses = make([]string, len(hosts))
+	clientAddresses = make([]string, len(hosts))
 
 	for i, host := range hosts {
-		peer_addresses[i] = "http://" + host + PeerPort
-		client_addresses[i] = "http://" + host + ClientPort
+		peerAddresses[i] = "http://" + host + PeerPort
+		clientAddresses[i] = "http://" + host + ClientPort
 	}
 
 	return &EtcdAdapter{
-		peer_addresses:   peer_addresses,
-		client_addresses: client_addresses,
-		processes:        []*os.Process{},
-		launchProcess:    make(chan *os.Process),
-		killAll:          make(chan bool),
+		peerAddresses:   peerAddresses,
+		clientAddresses: clientAddresses,
+		processes:       []*os.Process{},
+		launchProcess:   make(chan *os.Process),
+		killAll:         make(chan bool),
 	}
 }
