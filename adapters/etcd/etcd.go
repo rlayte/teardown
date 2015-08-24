@@ -18,8 +18,9 @@ const (
 type EtcdAdapter struct {
 	peer_addresses   []string
 	client_addresses []string // for clients
-	processes        []os.Process
+	processes        []*os.Process
 	launchProcess    chan *os.Process
+	killAll          chan bool
 }
 
 func (c *EtcdAdapter) Addresses() []string {
@@ -79,6 +80,8 @@ func (c *EtcdAdapter) Setup() {
 
 	var all_peers string
 
+	go c.serveProcesses()
+
 	for i, peer_address := range c.peer_addresses {
 		if i != 0 {
 			all_peers += ","
@@ -104,14 +107,21 @@ func (c *EtcdAdapter) Setup() {
 }
 
 func (c *EtcdAdapter) Teardown() {
+	c.killAll <- true
 }
 
-func (c *EtcdAdapter) ServeProcesses() {
+func (c *EtcdAdapter) serveProcesses() {
 	var process *os.Process
 	for {
 		select {
-		case process := <-c.launchProcess:
+		case process = <-c.launchProcess:
 			c.processes = append(c.processes, process)
+		case random_bool := <-c.killAll:
+			fmt.Println("2")
+			random_bool = random_bool
+			for _, p := range c.processes {
+				p.Kill()
+			}
 		}
 	}
 }
@@ -136,7 +146,8 @@ func Cluster() *EtcdAdapter {
 	return &EtcdAdapter{
 		peer_addresses:   peer_addresses,
 		client_addresses: client_addresses,
-		processes:        []os.Process{},
+		processes:        []*os.Process{},
 		launchProcess:    make(chan *os.Process),
+		killAll:          make(chan bool),
 	}
 }
