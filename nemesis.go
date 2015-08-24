@@ -16,7 +16,8 @@ type Nemesis interface {
 }
 
 type LocalNemesis struct {
-	nodes []string
+	nodes    []string
+	iptables iptables.IpTables
 }
 
 func (n *LocalNemesis) positionToAddress(position int) string {
@@ -32,7 +33,7 @@ func (n *LocalNemesis) positionToAddress(position int) string {
 
 func (n *LocalNemesis) PartitionHalf() {
 	half := len(n.nodes) / 2
-	iptables.PartitionLevel(n.nodes, half)
+	n.iptables.PartitionLevel(n.nodes, half)
 }
 
 func (n *LocalNemesis) PartitionRandom() {
@@ -45,7 +46,7 @@ func (n *LocalNemesis) PartitionSingle(position int) {
 	n1 := n.positionToAddress(position)
 	for _, n2 := range n.nodes {
 		if n1 != n2 {
-			iptables.Deny(n1, n2)
+			n.iptables.Deny(n1, n2)
 		}
 	}
 }
@@ -54,15 +55,15 @@ func (n *LocalNemesis) Bridge() {
 	bridge_index := len(n.nodes) / 2 // Fails with empty list.
 	for _, n1 := range n.nodes[:bridge_index] {
 		for _, n2 := range n.nodes[bridge_index+1:] {
-			iptables.Deny(n1, n2)
+			n.iptables.Deny(n1, n2)
 		}
 	}
 }
 
 func (n *LocalNemesis) Heal() {
-	iptables.Heal()
+	n.iptables.Heal()
 }
 
-func NewNemesis(cluster Cluster) Nemesis {
-	return &LocalNemesis{cluster.Addresses()}
+func NewNemesis(cluster Cluster) *LocalNemesis {
+	return &LocalNemesis{cluster.Addresses(), iptables.UnixIpTables{}}
 }
