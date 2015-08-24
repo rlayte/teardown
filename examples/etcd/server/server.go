@@ -39,9 +39,9 @@ func (c *EtcdAdapter) ExecWithLog(cmd *exec.Cmd, i int) {
 	stderrPipe, err := cmd.StderrPipe()
 	check(err)
 
-	out_file, err := os.Create(fmt.Sprintf("log/etcd_%d.out", i))
+	out_file, err := os.Create(fmt.Sprintf("/tmp/etcd_%d.out", i))
 	check(err)
-	err_file, err := os.Create(fmt.Sprintf("log/etcd_%d.err", i))
+	err_file, err := os.Create(fmt.Sprintf("/tmp/etcd_%d.err", i))
 	check(err)
 
 	out_writer := bufio.NewWriter(out_file)
