@@ -23,12 +23,14 @@ Because teardown messes with some core networking options it's probably safest t
 
 ### Setup
 
-teardown exposes two interfaces, `Cluster` and `Client`, that you must implement to with the specific details of your system.
+teardown exposes a `Cluster` interfaces that you must implement to with the specific details of your system.
 
 `Cluster` exposes three methods --- `Setup`, `Teardown` and `Addresses`.
 
 ```go
 // mycluster.go
+
+package mycluster
 
 type MyCluster struct {
   addresses []string
@@ -57,60 +59,33 @@ func (c *MyCluster) Addresses() []string {
 }
 ```
 
-`Client` handles getting and setting values in your system. Here's a very simple example that uses http:
-
-```go
-// mycluster.go
-
-type MyClient struct {
-  cluster Cluster
-}
-
-func (c *MyClient) currentLeader() string {
-  // Returns a random node in the cluster
-  addresses := c.cluster.Addresses()
-  return addresses[rand.Intn(len(addresses))]
-}
-
-func (c *MyClient) Put(key string, value string) error {
-  // Sends value=bar to http://127.0.0.z:4000/:key
-  address := fmt.Sprintf("http://%s:4000/%s", c.currentLeader(), key)
-  data := url.Values{}
-  data.Set("value", "bar")
-  resp, err := http.PostForm(address, data)
-  return err
-}
-
-func (c *MyClient) Get(key string) ([]byte, error) {
-  // Returns the body of http://127.0.0.x:4000/:key
-  address := fmt.Sprintf("http://%s:4000/%s", c.currentLeader(), key)
-  resp, err := http.Get(address) 
-  defer resp.Body.Close()
-  return ioutils.ReadAll(resp.Body), err
-}
-```
-
 ### Running the tests
 
-Once you have a concrete implementation of `Cluster` and `Client` pass them to `NewTestRunner` to execute the tests. E.g.
+Once you have a concrete implementation of `Cluster` you can pass it to a `Nemesis` instance, manipulate the current state of the network and write tests as normal. E.g.
 
 ```go
-// mycluster.go
+// mycluster_test.go
 
-main () {
-  cluster := NewMyCluster()
-  client := NewMyClient(cluster)
+package mycluster
 
-  tests := teardown.NewTestRunner(cluster, client)
-  tests.Run()
+var cluster teardown.Cluster
+var nemesis teardown.Nemesis
+
+init () {
+  cluster = NewMyCluster()
+  nemesis = teardown.NewNemesis(cluster)
+}
+
+func TestPartition(t *testing.T) {
+  nemesis.PartitionHalf()
+
+  // Run tests here
 }
 ```
 
 And run this with:
 
-    $ go run mycluster.go
-
-teardown really is a library for testing distributed systems more than anything else.
+    $ go test
 
 ## Documentation
 

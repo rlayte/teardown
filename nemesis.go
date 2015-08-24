@@ -62,3 +62,7 @@ func (n *LocalNemesis) Bridge() {
 func (n *LocalNemesis) Heal() {
 	iptables.Heal()
 }
+
+func NewNemesis(cluster Cluster) Nemesis {
+	return &LocalNemesis{cluster.Addresses()}
+}
